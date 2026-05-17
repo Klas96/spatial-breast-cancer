@@ -75,6 +75,13 @@ def main():
 
     ref_model = fit_reference_model(adata_ref)
     signatures = get_signature(ref_model, adata_ref)
+
+    # Restrict to genes present in both datasets
+    shared_genes = adata.var_names.intersection(signatures.index)
+    print(f"Shared genes: {len(shared_genes)}")
+    adata = adata[:, shared_genes].copy()
+    signatures = signatures.loc[shared_genes]
+
     adata = fit_spatial_model(adata, signatures)
     plot_cell_types(adata)
     adata.write(RESULTS_DIR / "03_deconvolved.h5ad")
