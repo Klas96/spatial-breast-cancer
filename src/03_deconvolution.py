@@ -27,13 +27,13 @@ def fit_reference_model(adata_ref: sc.AnnData) -> cell2location.models.Regressio
         labels_key="cell_type",
     )
     model = cell2location.models.RegressionModel(adata_ref)
-    model.train(max_epochs=200, use_gpu=False)
+    model.train(max_epochs=200, accelerator="gpu")
     return model
 
 
 def get_signature(model: cell2location.models.RegressionModel, adata_ref: sc.AnnData):
     adata_ref = model.export_posterior(adata_ref, sample_kwargs={"num_samples": 1000})
-    return adata_ref.uns["means_per_cluster_mu_fg"]
+    return adata_ref.varm["means_per_cluster_mu_fg"]
 
 
 def fit_spatial_model(adata: sc.AnnData, cell_type_signatures) -> sc.AnnData:
@@ -44,7 +44,7 @@ def fit_spatial_model(adata: sc.AnnData, cell_type_signatures) -> sc.AnnData:
         N_cells_per_location=N_CELLS_PER_SPOT,
         detection_alpha=20,
     )
-    model.train(max_epochs=10000, batch_size=None, use_gpu=False)
+    model.train(max_epochs=10000, batch_size=None, accelerator="gpu")
     adata = model.export_posterior(adata, sample_kwargs={"num_samples": 1000})
     return adata
 
@@ -70,6 +70,8 @@ def plot_cell_types(adata: sc.AnnData) -> None:
 def main():
     adata = sc.read(RESULTS_DIR / "02_clustered.h5ad")
     adata_ref = sc.read(Path("data") / "scrna_reference.h5ad")
+    adata_ref = adata_ref[adata_ref.obs["cell_type"].notna()].copy()
+    adata_ref.obs["cell_type"] = adata_ref.obs["cell_type"].astype(str).astype("category")
 
     ref_model = fit_reference_model(adata_ref)
     signatures = get_signature(ref_model, adata_ref)

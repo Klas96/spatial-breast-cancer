@@ -18,13 +18,13 @@ def compute_neighbours(adata: sc.AnnData) -> sc.AnnData:
     # Transcriptional neighbours
     sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
     # Spatial neighbours (for spatially-aware clustering)
-    sq.gr.spatial_neighbors(adata, coord_type="visium")
+    sq.gr.spatial_neighbors(adata, coord_type="grid")
     return adata
 
 
 def cluster(adata: sc.AnnData, resolution: float = 0.5) -> sc.AnnData:
     sc.tl.umap(adata)
-    sc.tl.leiden(adata, resolution=resolution, key_added="leiden")
+    sc.tl.leiden(adata, resolution=resolution, key_added="leiden", flavor="igraph", directed=False, n_iterations=2)
     return adata
 
 

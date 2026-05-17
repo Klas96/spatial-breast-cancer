@@ -16,7 +16,7 @@ N_TOP_SVGS = 12
 
 
 def compute_morans_i(adata: sc.AnnData) -> sc.AnnData:
-    sq.gr.spatial_neighbors(adata, coord_type="visium")
+    sq.gr.spatial_neighbors(adata, coord_type="grid")
     sq.gr.spatial_autocorr(adata, mode="moran", n_jobs=4)
     return adata
 

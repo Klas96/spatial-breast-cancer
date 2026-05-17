@@ -23,7 +23,7 @@ def assign_dominant_cell_type(adata: sc.AnnData) -> sc.AnnData:
 
 
 def run_nhood_enrichment(adata: sc.AnnData) -> sc.AnnData:
-    sq.gr.spatial_neighbors(adata, coord_type="visium")
+    sq.gr.spatial_neighbors(adata, coord_type="grid")
     sq.gr.nhood_enrichment(adata, cluster_key="dominant_cell_type")
     return adata
 

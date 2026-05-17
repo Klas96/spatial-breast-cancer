@@ -1,0 +1,20 @@
+[project]
+name = "spatial-breast-cancer"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "scanpy",
+    "squidpy",
+    "anndata",
+    "cell2location",
+    "torch",
+    "torch-geometric",
+    "scikit-learn",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "tqdm",
+    "igraph",
+    "leidenalg",
+]

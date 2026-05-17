@@ -138,7 +138,7 @@ def evaluate(model, data, test_mask, le, adata) -> None:
 
 def main():
     adata = sc.read(RESULTS_DIR / "05_nhood_enrichment.h5ad")
-    sq.gr.spatial_neighbors(adata, coord_type="visium")
+    sq.gr.spatial_neighbors(adata, coord_type="grid")
 
     data, le = build_graph(adata)
     train_mask, val_mask, test_mask = split_masks(data.num_nodes)

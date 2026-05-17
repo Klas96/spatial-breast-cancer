@@ -1,8 +1,22 @@
+# Environment
+.venv/
+
+# Data (too large for git — see README for download instructions)
 data/
+
+# Pipeline outputs
 results/
+
+# Python
 __pycache__/
 *.pyc
-.env
-*.h5ad
+*.pyo
 *.egg-info/
+
+# Secrets / local config
+.env
+.claude/
+
+# OS
 .DS_Store
+Thumbs.db
