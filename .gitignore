@@ -1,0 +1,8 @@
+data/
+results/
+__pycache__/
+*.pyc
+.env
+*.h5ad
+*.egg-info/
+.DS_Store
