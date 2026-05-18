@@ -13,8 +13,8 @@ import cell2location
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+from config import VISIUM_DIR, RESULTS_DIR, SCRNA_ATLAS
 
-RESULTS_DIR = Path("results")
 sc.settings.figdir = RESULTS_DIR
 sc.settings.verbosity = 2
 
@@ -76,7 +76,7 @@ def main():
     adata_clustered = sc.read(RESULTS_DIR / "02_clustered.h5ad")
 
     # Reload raw Visium counts — cell2location requires raw integer counts
-    adata_raw = sc.read_visium(Path("data/visium"))
+    adata_raw = sc.read_visium(VISIUM_DIR)
     adata_raw.var_names_make_unique()
     adata_raw = adata_raw[adata_clustered.obs_names].copy()  # same spots as post-QC
     # Transfer cluster labels and spatial embedding for downstream plots
@@ -84,7 +84,7 @@ def main():
     adata_raw.obsm["spatial"] = adata_clustered.obsm["spatial"]
 
     # Wu et al. 2021 atlas — use raw counts and remap Ensembl IDs to gene symbols
-    adata_ref_full = sc.read(Path("data") / "wu2021_scrna_atlas.h5ad")
+    adata_ref_full = sc.read(SCRNA_ATLAS)
     adata_ref = adata_ref_full.raw.to_adata()
     adata_ref.var_names = adata_ref.var["feature_name"].values
     adata_ref.var_names_make_unique()

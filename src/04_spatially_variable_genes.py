@@ -8,9 +8,8 @@ import scanpy as sc
 import squidpy as sq
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
+from config import RESULTS_DIR
 
-RESULTS_DIR = Path("results")
 sc.settings.figdir = RESULTS_DIR
 N_TOP_SVGS = 12
 

@@ -7,9 +7,8 @@ Output: results/02_clustered.h5ad
 import scanpy as sc
 import squidpy as sq
 import matplotlib.pyplot as plt
-from pathlib import Path
+from config import RESULTS_DIR
 
-RESULTS_DIR = Path("results")
 sc.settings.figdir = RESULTS_DIR
 sc.settings.verbosity = 2
 
@@ -35,7 +34,7 @@ def plot(adata: sc.AnnData) -> None:
     fig.tight_layout()
     fig.savefig(RESULTS_DIR / "02_clusters.png", dpi=150)
     plt.close()
-    print("Saved: results/02_clusters.png")
+    print(f"Saved: {RESULTS_DIR}/02_clusters.png")
 
 
 def main():
@@ -44,7 +43,7 @@ def main():
     adata = cluster(adata)
     plot(adata)
     adata.write(RESULTS_DIR / "02_clustered.h5ad")
-    print("Saved: results/02_clustered.h5ad")
+    print(f"Saved: {RESULTS_DIR}/02_clustered.h5ad")
 
 
 if __name__ == "__main__":

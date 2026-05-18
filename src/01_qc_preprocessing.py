@@ -8,11 +8,9 @@ import scanpy as sc
 import squidpy as sq
 import matplotlib.pyplot as plt
 from pathlib import Path
+from config import VISIUM_DIR, RESULTS_DIR
 
-DATA_DIR = Path("data/visium")
-RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
-
 sc.settings.figdir = RESULTS_DIR
 sc.settings.verbosity = 2
 
@@ -53,16 +51,16 @@ def preprocess(adata: sc.AnnData) -> sc.AnnData:
     sc.pp.highly_variable_genes(adata, n_top_genes=3000, flavor="seurat_v3", subset=False)
     adata.raw = adata
     sc.pp.scale(adata)
-    sc.pp.pca(adata, use_highly_variable=True)
+    sc.pp.pca(adata, mask_var="highly_variable")
     return adata
 
 
 def main():
-    adata = load_data(DATA_DIR)
+    adata = load_data(VISIUM_DIR)
     adata = run_qc(adata)
     adata = preprocess(adata)
     adata.write(RESULTS_DIR / "01_qc_preprocessed.h5ad")
-    print("Saved: results/01_qc_preprocessed.h5ad")
+    print(f"Saved: {RESULTS_DIR}/01_qc_preprocessed.h5ad")
 
 
 if __name__ == "__main__":

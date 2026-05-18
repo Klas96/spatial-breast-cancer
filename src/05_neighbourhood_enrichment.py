@@ -10,9 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from pathlib import Path
+from config import RESULTS_DIR
 
-RESULTS_DIR = Path("results")
 sc.settings.figdir = RESULTS_DIR
 
 

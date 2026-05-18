@@ -13,7 +13,7 @@ import squidpy as sq
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
+from config import RESULTS_DIR
 
 import torch
 import torch.nn.functional as F
@@ -22,8 +22,6 @@ from torch_geometric.nn import GCNConv
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
-
-RESULTS_DIR = Path("results")
 EPOCHS = 300
 LR = 1e-3
 HIDDEN_DIM = 64
