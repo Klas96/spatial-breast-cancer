@@ -20,6 +20,9 @@
 \usepackage{titlesec}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+\definecolor{highlightbg}{RGB}{240,246,255}
 
 \hypersetup{
     colorlinks=true,
@@ -45,13 +48,34 @@ and Graph Neural Networks}\\[0.5em]
 \begin{document}
 
 \maketitle
+
+% ---------------------------------------------------------------
+% Highlights box (STAR Protocols style)
+\begin{tcolorbox}[
+    enhanced,
+    colback=highlightbg,
+    colframe=blue!40!black,
+    fonttitle=\bfseries,
+    title=Highlights,
+    arc=4pt,
+    left=6pt, right=6pt, top=4pt, bottom=4pt
+]
+\begin{itemize}\setlength\itemsep{2pt}
+    \item End-to-end Python pipeline for spatial transcriptomics analysis of the tumour microenvironment
+    \item Bayesian cell-type deconvolution using Cell2location with the Wu et al.\ 2021 breast cancer atlas
+    \item Spatially variable gene detection and neighbourhood co-localisation analysis via Squidpy
+    \item Graph convolutional network predicts tissue domains from the spatial gene expression graph
+\end{itemize}
+\end{tcolorbox}
+
+\vspace{0.5em}
 \tableofcontents
 \newpage
 
 % ---------------------------------------------------------------
 \section{Abstract}
 
-The tumour microenvironment (TME) in breast cancer is a complex ecosystem of malignant, stromal, and immune cells whose spatial organisation has profound implications for tumour progression, immune evasion, and therapeutic response. Recent advances in spatial transcriptomics—particularly the 10x Genomics Visium platform—enable simultaneous profiling of the transcriptome and tissue architecture at near-single-cell resolution. Here we present an end-to-end computational pipeline that integrates standard bioinformatics approaches with a graph convolutional network (GCN) to characterise the spatial TME in human breast cancer. The pipeline encompasses quality control, normalisation, dimensionality reduction, Leiden clustering, Bayesian cell-type deconvolution via Cell2location, spatially variable gene (SVG) detection using Moran's $I$, cell-type co-localisation analysis, and finally a two-layer GCN that predicts tissue domain labels directly from the spatial gene expression graph. All analyses are fully reproducible via a \texttt{uv}-managed Python environment. Code is available at \url{https://github.com/Klas96/spatial-breast-cancer}.
+Spatial transcriptomics enables simultaneous profiling of gene expression and tissue architecture, but integrating the full analytical workflow---from quality control to deep learning---requires coordinating multiple specialised tools. Here we present a step-by-step computational protocol for characterising the breast cancer tumour microenvironment using 10x Genomics Visium data. The pipeline covers quality control, normalisation, Leiden clustering, Bayesian cell-type deconvolution with Cell2location, spatially variable gene detection using Moran's $I$, cell-type co-localisation analysis, and tissue domain prediction with a graph convolutional network (GCN). We validate the protocol on two independent Visium datasets---one FFPE and one fresh-frozen---demonstrating reproducibility across sample preparation methods. All steps are implemented in Python using a \texttt{uv}-managed environment and can be executed sequentially via a single shell script. The protocol is designed for computational biologists with basic Python experience and requires approximately 4 hours of compute time per dataset with GPU acceleration. Code is available at \url{https://github.com/Klas96/spatial-breast-cancer}.
 
 % ---------------------------------------------------------------
 \section{Introduction}
