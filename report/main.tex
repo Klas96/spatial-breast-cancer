@@ -23,6 +23,7 @@
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
 \definecolor{highlightbg}{RGB}{240,246,255}
+\usepackage{longtable}
 \usepackage{listings}
 \lstset{
     language=bash,
@@ -632,6 +633,216 @@ The GCN was trained to predict the dominant cell-type label from the spatial gen
     \caption{Spatial comparison of ground-truth dominant cell type (left) and GCN predictions (right). Agreement between the two maps demonstrates the model's ability to learn tissue domain structure from gene expression and spatial adjacency alone.}
     \label{fig:gnn}
 \end{figure}
+
+% ---------------------------------------------------------------
+\section{Troubleshooting}
+
+Table~\ref{tab:trouble} lists problems users commonly encounter,
+their likely causes, and recommended solutions.
+Step numbers refer to the numbered steps in
+Section~5 (Step-by-Step Method Details).
+
+\begingroup
+\small
+\setlength{\LTpre}{6pt}
+\setlength{\LTpost}{6pt}
+\begin{longtable}{p{1.6cm} p{3.8cm} p{3.8cm} p{5.4cm}}
+\caption{Troubleshooting table.}
+\label{tab:trouble} \\
+\toprule
+\textbf{Step} & \textbf{Problem} & \textbf{Possible cause} & \textbf{Solution} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}{\small\itshape Table~\ref{tab:trouble} continued} \\
+\toprule
+\textbf{Step} & \textbf{Problem} & \textbf{Possible cause} & \textbf{Solution} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\small\itshape continued on next page} \\
+\endfoot
+\bottomrule
+\endlastfoot
+
+%% ── Before You Begin ────────────────────────────────────────────
+Before you begin, step~3 &
+\texttt{uv sync} fails with \textit{``Python~3.11 not found''} &
+System Python is older than 3.11 &
+Install Python~3.11 or 3.12 via \texttt{pyenv} or your system package
+manager, then re-run \texttt{uv sync}. \\[4pt]
+
+Before you begin, step~3 &
+\texttt{ImportError: torch} after \texttt{uv sync} &
+PyTorch was installed without CUDA support &
+Install the CUDA-enabled wheel explicitly:
+\texttt{uv pip install torch --index-url https://download.pytorch.org/whl/cu121}
+then \texttt{uv sync --frozen}. \\[4pt]
+
+Before you begin, step~3 &
+\texttt{nvidia-smi} reports \textit{``No devices found''} &
+NVIDIA kernel module not loaded &
+Run \texttt{sudo modprobe nvidia}; if the module is missing, reinstall
+the driver matching the running kernel with
+\texttt{sudo apt install nvidia-dkms-\$VERSION}. \\[4pt]
+
+Before you begin, step~5 &
+Atlas file missing \texttt{adata.raw} (accessing \texttt{.raw} returns
+\texttt{None}) &
+CellXGene normalised version downloaded instead of raw counts &
+Re-download the \textit{unprocessed} H5AD from CellXGene, which
+includes the \texttt{raw} slot. Confirm with
+\texttt{print(adata.raw)}. \\[4pt]
+
+%% ── Stage 1 ─────────────────────────────────────────────────────
+Stage~1, step~2c &
+Fewer than 500 spots remain after QC filtering &
+Tissue has low RNA quality (common with FFPE) &
+Relax thresholds in \texttt{run\_qc()}: e.g.\
+\texttt{total\_counts > 500} and \texttt{pct\_counts\_mt < 30}.
+Re-inspect the QC histogram to choose appropriate cut-offs. \\[4pt]
+
+Stage~1, step~2a &
+\texttt{gzip.BadGzipFile} when reading SpaceRanger files &
+Files have a \texttt{.gz} extension but are not gzip-compressed &
+Check with \texttt{file barcodes.tsv.gz}. If plain text, strip the
+extension: \texttt{mv barcodes.tsv.gz barcodes.tsv}, and repeat for
+\texttt{features.tsv.gz} and \texttt{matrix.mtx.gz}. \\[4pt]
+
+Stage~1, step~2e &
+\texttt{UserWarning: flavor='seurat\_v3' expects raw count data} &
+Normalisation applied before HVG selection &
+The warning is harmless if QC was run before normalisation; HVGs are
+still selected correctly. To suppress, move
+\texttt{sc.pp.highly\_variable\_genes} before
+\texttt{sc.pp.normalize\_total}. \\[4pt]
+
+%% ── Stage 2 ─────────────────────────────────────────────────────
+Stage~2, step~1 &
+\texttt{ModuleNotFoundError: leidenalg} &
+Package missing from environment &
+Run \texttt{uv add leidenalg igraph \&\& uv sync} and restart. \\[4pt]
+
+Stage~2, step~1 &
+Leiden returns only one cluster &
+Resolution parameter too low &
+Increase \texttt{resolution} in \texttt{cluster()} to 0.8--1.5.
+Alternatively, increase \texttt{n\_neighbors} in
+\texttt{sc.pp.neighbors}. \\[4pt]
+
+Stage~2, step~1 &
+\texttt{coord\_type} argument raises \texttt{ValueError} &
+Old Squidpy version removed the \texttt{"visium"} option &
+Use \texttt{coord\_type="grid"} (current default for Visium). \\[4pt]
+
+%% ── Stage 3 ─────────────────────────────────────────────────────
+Stage~3, step~2e &
+\texttt{GammaPoisson} likelihood produces \texttt{NaN} or loss explodes &
+Normalised (non-integer) counts passed to Cell2location &
+The script reloads raw Visium data from \texttt{data/visium/}.
+Verify with \texttt{print(adata.X.data[:10])} — values must be
+non-negative integers. \\[4pt]
+
+Stage~3, step~2e &
+\texttt{KeyError: 'means\_per\_cluster\_mu\_fg'} &
+Cell2location version mismatch: old versions stored signatures in
+\texttt{uns}, newer in \texttt{varm} &
+Use \texttt{adata\_ref.varm["means\_per\_cluster\_mu\_fg"]}.
+Confirm which slot is populated with
+\texttt{print(adata\_ref.varm.keys())}. \\[4pt]
+
+Stage~3, step~2d &
+Shared gene count below 5,000 &
+Gene identifier mismatch: atlas uses Ensembl IDs, Visium uses
+HGNC symbols &
+Access raw counts via \texttt{adata\_ref\_full.raw.to\_adata()} and
+assign \texttt{adata\_ref.var\_names = adata\_ref.var["feature\_name"].values}
+before intersecting. \\[4pt]
+
+Stage~3, step~2e &
+\texttt{RuntimeError: CUDA out of memory} &
+Spatial model batch size too large &
+Pass \texttt{batch\_size=256} to \texttt{model.train()} instead of
+\texttt{batch\_size=None}. Training will be slower but memory-safe. \\[4pt]
+
+Stage~3, step~2e &
+\texttt{ValueError: shapes not aligned} or length mismatch &
+Gene lists differ between Visium object and signature matrix &
+Ensure the gene intersection step runs correctly:
+\texttt{shared = adata\_raw.var\_names.intersection(signatures.index)}
+and subset both objects before fitting the spatial model. \\[4pt]
+
+%% ── Stage 4 ─────────────────────────────────────────────────────
+Stage~4, step~2b &
+All Moran's $I$ values are \texttt{NaN} &
+Expression matrix contains no variation (all genes constant across
+spots) &
+This typically means the wrong \texttt{.h5ad} was loaded.
+Confirm \texttt{adata.X} is not all zeros with
+\texttt{print(adata.X.sum())}. \\[4pt]
+
+Stage~4, step~2b &
+Warning: \textit{``N variables were constant''} &
+Some genes are expressed in only one spot &
+Expected and harmless; those genes receive \texttt{NaN} and are
+excluded from the ranking automatically. \\[4pt]
+
+%% ── Stage 5 ─────────────────────────────────────────────────────
+Stage~5, step~2a &
+\texttt{TypeError: Expected adata.obs['dominant\_cell\_type'] to be
+categorical} &
+\texttt{idxmax} returns a \texttt{string}-dtype Series in newer Pandas &
+Cast explicitly:
+\texttt{adata.obs["dominant\_cell\_type"] = dominant.astype("category")}.
+This is already applied in the current script. \\[4pt]
+
+Stage~5, step~2b &
+Neighbourhood enrichment $z$-scores are all near zero &
+Too few spots assigned to minority cell types for permutation test
+to be meaningful &
+Increase permutations (\texttt{n\_perms=2000}) or merge rare cell
+types into an ``Other'' category before running enrichment. \\[4pt]
+
+Stage~5, step~2a &
+Cell-type labels in the heatmap contain a long prefix
+(e.g.\ \textit{meanscell\_abundance\_w\_sf\_\ldots}) &
+Cell2location column names include a model-derived prefix &
+The \texttt{assign\_dominant\_cell\_type} function strips the common
+prefix automatically using \texttt{os.path.commonprefix}.
+If labels are still long, print \texttt{abundances.columns} and
+hard-code the prefix length. \\[4pt]
+
+%% ── Stage 6 ─────────────────────────────────────────────────────
+Stage~6, step~2a &
+\texttt{KeyError: 'X\_pca'} &
+PCA was not stored in the deconvolved \texttt{.h5ad} (Cell2location
+works on raw counts without PCA) &
+\texttt{compute\_pca(adata)} is called automatically at the start of
+Stage~6; this is already implemented in the script. \\[4pt]
+
+Stage~6, step~3 &
+GNN test accuracy below 50\% &
+Severe class imbalance: one cell type dominates (e.g.\ Cancer
+Epithelial in tumour-dense tissue) &
+Compute per-class weights and pass to the loss:
+\texttt{weight = 1 / class\_counts; F.cross\_entropy(\ldots, weight=weight)}. \\[4pt]
+
+Stage~6, step~3 &
+Validation accuracy does not improve after epoch~50 &
+Learning rate too high or model overfitting &
+Reduce \texttt{LR} to \texttt{1e-4} in
+\texttt{src/06\_gnn\_domain\_prediction.py}, or add an early-stopping
+callback based on validation loss. \\[4pt]
+
+Stage~6, step~4 &
+Second dataset (\texttt{results2/}) produces very different accuracy
+from dataset~1 &
+Different tissue composition: one section may be tumour-dominated,
+the other stroma-dominated &
+This is biologically expected, not a pipeline error. Compare
+weighted F1 (not accuracy) for a class-imbalance-robust metric. \\[4pt]
+
+\end{longtable}
+\endgroup
 
 % ---------------------------------------------------------------
 \section{Discussion}
