@@ -24,6 +24,8 @@ report/*.blg
 report/*.log
 report/*.out
 report/*.toc
+report/reference.docx
+report/make_reference_docx.md
 
 # OS
 .DS_Store
