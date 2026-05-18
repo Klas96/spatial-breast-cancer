@@ -38,7 +38,7 @@ def plot_top_svgs(adata: sc.AnnData, svg_df: pd.DataFrame) -> None:
     fig, axes = plt.subplots(3, 4, figsize=(16, 12))
     axes = axes.flatten()
     for i, gene in enumerate(top_genes):
-        sq.pl.spatial_scatter(adata, color=gene, ax=axes[i], img=False, colormap="viridis")
+        sq.pl.spatial_scatter(adata, color=gene, ax=axes[i], img=False, cmap="viridis")
         axes[i].set_title(gene, fontsize=9)
     fig.suptitle("Top spatially variable genes (Moran's I)", fontsize=12)
     fig.tight_layout()

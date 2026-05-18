@@ -18,7 +18,13 @@ sc.settings.figdir = RESULTS_DIR
 
 def assign_dominant_cell_type(adata: sc.AnnData) -> sc.AnnData:
     abundances = adata.obsm["means_cell_abundance_w_sf"]
-    adata.obs["dominant_cell_type"] = abundances.idxmax(axis=1)
+    dominant = abundances.idxmax(axis=1)
+    # Strip common cell2location prefix so labels are bare cell type names
+    from os.path import commonprefix
+    prefix = commonprefix(abundances.columns.tolist())
+    if prefix:
+        dominant = dominant.str[len(prefix):]
+    adata.obs["dominant_cell_type"] = dominant.astype("category")
     return adata
 
 

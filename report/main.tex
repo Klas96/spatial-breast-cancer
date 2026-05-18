@@ -190,9 +190,19 @@ The GCN was trained to predict the dominant cell-type label from the spatial gen
         \toprule
         \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
         \midrule
-        \multicolumn{5}{c}{\textit{(Results populated after pipeline completion)}} \\
+        B-cells            & 0.61 & 0.44 & 0.51 &  25 \\
+        CAFs               & 0.70 & 0.68 & 0.69 &  91 \\
+        Cancer Epithelial  & 0.88 & 0.92 & 0.90 & 190 \\
+        Endothelial        & 0.00 & 0.00 & 0.00 &   6 \\
+        Myeloid            & 0.74 & 0.81 & 0.77 &  72 \\
+        Normal Epithelial  & 0.00 & 0.00 & 0.00 &   3 \\
+        PVL                & 0.67 & 0.20 & 0.31 &  10 \\
+        Plasmablasts       & 0.55 & 0.40 & 0.46 &  15 \\
+        T-cells            & 0.65 & 0.73 & 0.69 &  90 \\
         \midrule
-        Macro avg & -- & -- & -- & -- \\
+        Accuracy           & \multicolumn{3}{c}{0.75} & 502 \\
+        Macro avg          & 0.53 & 0.46 & 0.48 & 502 \\
+        Weighted avg       & 0.74 & 0.75 & 0.74 & 502 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -211,7 +221,7 @@ This work presents a fully integrated pipeline for spatial transcriptomics analy
 
 \paragraph{Data and deconvolution reference.} The deconvolution reference used here (Zenodo 4739739) contains histological region annotations rather than single-cell type labels. This provides a biologically coarser decomposition than would be achieved with a true single-cell atlas annotated at the cell-type level (e.g. distinguishing T cells from B cells and myeloid subsets). Future work should incorporate the full Wu et al. \citeyearpar{wu2021} single-cell atlas from GEO (GSE176078), which provides fine-grained cell-type annotations across $>26{,}000$ cells.
 
-\paragraph{GCN for spatial domain prediction.} Using dominant cell type as a proxy for tissue domain is a reasonable first approximation, but tissue domains in cancer are heterogeneous. The GCN formulation presented here—with PCA embeddings as node features and spatial adjacency as edges—closely mirrors graph-based approaches used in recent spatial omics studies. Extensions could include multi-relational graphs (combining transcriptional and spatial edges), attention-based graph convolutions (GAT), or unsupervised graph clustering.
+\paragraph{GCN for spatial domain prediction.} The GCN achieved 75\% test accuracy, with particularly strong performance on the dominant Cancer Epithelial class (F1 = 0.90). Rare classes such as Endothelial and Normal Epithelial had near-zero recall, reflecting severe class imbalance rather than model failure. Using dominant cell type as a proxy for tissue domain is a reasonable first approximation, but tissue domains in cancer are heterogeneous. Extensions could include multi-relational graphs (combining transcriptional and spatial edges), attention-based graph convolutions (GAT), or unsupervised graph clustering to discover domains without predefined labels.
 
 \paragraph{Scalability.} With 2,509 spots and 18,714 genes the current dataset is modest; the pipeline is designed to scale to Visium HD ($\sim$11,000 spots at 8\,$\mu$m resolution) and larger cohorts with minor modifications.
 

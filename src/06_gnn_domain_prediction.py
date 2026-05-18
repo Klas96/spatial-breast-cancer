@@ -136,8 +136,17 @@ def evaluate(model, data, test_mask, le, adata) -> None:
     print("Saved: results/06_gnn_spatial_pred.png")
 
 
+def compute_pca(adata: sc.AnnData, n_comps: int = 50) -> sc.AnnData:
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+    sc.pp.pca(adata, n_comps=n_comps, mask_var="highly_variable")
+    return adata
+
+
 def main():
     adata = sc.read(RESULTS_DIR / "05_nhood_enrichment.h5ad")
+    adata = compute_pca(adata)
     sq.gr.spatial_neighbors(adata, coord_type="grid")
 
     data, le = build_graph(adata)

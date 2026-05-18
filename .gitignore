@@ -17,6 +17,14 @@ __pycache__/
 .env
 .claude/
 
+# LaTeX build artefacts
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.toc
+
 # OS
 .DS_Store
 Thumbs.db

@@ -50,14 +50,18 @@ def fit_spatial_model(adata: sc.AnnData, cell_type_signatures) -> sc.AnnData:
 
 
 def plot_cell_types(adata: sc.AnnData) -> None:
-    cell_types = adata.obsm["means_cell_abundance_w_sf"].columns.tolist()
+    abundances = adata.obsm["means_cell_abundance_w_sf"]
+    cell_types = abundances.columns.tolist()
+    # Copy to obs so squidpy can access them for plotting
+    for ct in cell_types:
+        adata.obs[ct] = abundances[ct].values
     n = len(cell_types)
     ncols = 4
     nrows = int(np.ceil(n / ncols))
     fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 4, nrows * 4))
     axes = axes.flatten()
     for i, ct in enumerate(cell_types):
-        sq.pl.spatial_scatter(adata, color=ct, ax=axes[i], img=False, colormap="magma")
+        sq.pl.spatial_scatter(adata, color=ct, ax=axes[i], img=False, cmap="magma")
         axes[i].set_title(ct, fontsize=8)
     for j in range(i + 1, len(axes)):
         axes[j].axis("off")
@@ -68,23 +72,38 @@ def plot_cell_types(adata: sc.AnnData) -> None:
 
 
 def main():
-    adata = sc.read(RESULTS_DIR / "02_clustered.h5ad")
-    adata_ref = sc.read(Path("data") / "scrna_reference.h5ad")
-    adata_ref = adata_ref[adata_ref.obs["cell_type"].notna()].copy()
-    adata_ref.obs["cell_type"] = adata_ref.obs["cell_type"].astype(str).astype("category")
+    # Load clustered data to get QC-filtered spot barcodes and spatial info
+    adata_clustered = sc.read(RESULTS_DIR / "02_clustered.h5ad")
+
+    # Reload raw Visium counts — cell2location requires raw integer counts
+    adata_raw = sc.read_visium(Path("data/visium"))
+    adata_raw.var_names_make_unique()
+    adata_raw = adata_raw[adata_clustered.obs_names].copy()  # same spots as post-QC
+    # Transfer cluster labels and spatial embedding for downstream plots
+    adata_raw.obs = adata_raw.obs.join(adata_clustered.obs[["leiden"]])
+    adata_raw.obsm["spatial"] = adata_clustered.obsm["spatial"]
+
+    # Wu et al. 2021 atlas — use raw counts and remap Ensembl IDs to gene symbols
+    adata_ref_full = sc.read(Path("data") / "wu2021_scrna_atlas.h5ad")
+    adata_ref = adata_ref_full.raw.to_adata()
+    adata_ref.var_names = adata_ref.var["feature_name"].values
+    adata_ref.var_names_make_unique()
+    adata_ref.obs["cell_type"] = adata_ref_full.obs["celltype_major"].values.astype(str)
+    adata_ref.obs["cell_type"] = adata_ref.obs["cell_type"].astype("category")
+    del adata_ref_full
 
     ref_model = fit_reference_model(adata_ref)
     signatures = get_signature(ref_model, adata_ref)
 
     # Restrict to genes present in both datasets
-    shared_genes = adata.var_names.intersection(signatures.index)
+    shared_genes = adata_raw.var_names.intersection(signatures.index)
     print(f"Shared genes: {len(shared_genes)}")
-    adata = adata[:, shared_genes].copy()
+    adata_raw = adata_raw[:, shared_genes].copy()
     signatures = signatures.loc[shared_genes]
 
-    adata = fit_spatial_model(adata, signatures)
-    plot_cell_types(adata)
-    adata.write(RESULTS_DIR / "03_deconvolved.h5ad")
+    adata_raw = fit_spatial_model(adata_raw, signatures)
+    plot_cell_types(adata_raw)
+    adata_raw.write(RESULTS_DIR / "03_deconvolved.h5ad")
     print("Saved: results/03_deconvolved.h5ad")
 
 
