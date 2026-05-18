@@ -143,6 +143,127 @@ The spatial dataset used in this study is the 10x Genomics Visium FFPE Human Bre
 Cell-type deconvolution requires a matched single-cell RNA-seq reference. We employed the Wu et al. \citeyearpar{wu2021} breast cancer single-cell atlas (Zenodo accession 4739739), comprising 15,611 cells from six tumours spanning multiple subtypes (ER$^+$, HER2$^+$, TNBC). The atlas contains histological region annotations used as cell-type labels for deconvolution signature estimation.
 
 % ---------------------------------------------------------------
+\section{Key Resources Table}
+
+\begingroup
+\small
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{p{4.5cm} p{4.8cm} p{5.3cm}}
+\caption{Key resources used in this protocol.}
+\label{tab:resources} \\
+\toprule
+\textbf{Reagent or resource} & \textbf{Source} & \textbf{Identifier} \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}{\small\itshape Table~\ref{tab:resources} continued} \\
+\toprule
+\textbf{Reagent or resource} & \textbf{Source} & \textbf{Identifier} \\
+\midrule
+\endhead
+\midrule \multicolumn{3}{r}{\small\itshape continued on next page} \\
+\endfoot
+\bottomrule
+\endlastfoot
+
+%% ── Deposited data ──────────────────────────────────────────────
+\multicolumn{3}{l}{\textit{\textbf{Deposited data}}} \\[2pt]
+
+10x Visium FFPE Human Breast Cancer (SpaceRanger v1.3.0) &
+10x Genomics &
+\url{https://www.10xgenomics.com/datasets} \\[4pt]
+
+10x Visium Fresh-Frozen Human Breast Cancer Block~A Section~1
+(SpaceRanger v1.1.0) &
+10x Genomics &
+\url{https://www.10xgenomics.com/datasets} \\[4pt]
+
+Wu et al.\ 2021 breast cancer scRNA-seq atlas;
+100,064 cells, 9 major cell types &
+Wu et al., 2021 \citep{wu2021};
+CellXGene &
+GEO: GSE176078;
+DOI: 10.1038/s41588-021-00911-1 \\[4pt]
+
+%% ── Software and algorithms ─────────────────────────────────────
+\multicolumn{3}{l}{\textit{\textbf{Software and algorithms}}} \\[2pt]
+
+Python 3.12.3 &
+Python Software Foundation &
+\url{https://www.python.org} \\[4pt]
+
+uv~0.11.14 — Python package manager &
+Astral &
+\url{https://github.com/astral-sh/uv} \\[4pt]
+
+Scanpy~1.12.1 — single-cell analysis &
+Wolf et al., 2018 \citep{wolf2018} &
+PyPI: \texttt{scanpy};
+DOI: 10.1186/s13059-017-1382-0 \\[4pt]
+
+Squidpy~1.8.1 — spatial omics analysis &
+Palla et al., 2022 \citep{palla2022} &
+PyPI: \texttt{squidpy};
+DOI: 10.1038/s41592-021-01358-2 \\[4pt]
+
+AnnData~0.12.14 — annotated data matrices &
+Virshup et al., 2024 &
+PyPI: \texttt{anndata};
+DOI: 10.1101/2021.12.16.473007 \\[4pt]
+
+Cell2location~0.1.5 — Bayesian deconvolution &
+Kleshchevnikov et al., 2022 \citep{kleshchevnikov2022} &
+PyPI: \texttt{cell2location};
+DOI: 10.1038/s41587-021-01139-4 \\[4pt]
+
+PyTorch~2.12.0+cu130 — deep learning framework &
+Paszke et al., 2019 &
+PyPI: \texttt{torch};
+\url{https://pytorch.org} \\[4pt]
+
+PyTorch Geometric~2.7.0 — geometric deep learning &
+Fey \& Lenssen, 2019 &
+PyPI: \texttt{torch-geometric};
+DOI: 10.48550/arXiv.1903.02428 \\[4pt]
+
+scikit-learn~1.8.0 — machine learning utilities &
+Pedregosa et al., 2011 &
+PyPI: \texttt{scikit-learn};
+DOI: 10.5555/1953048.2078195 \\[4pt]
+
+igraph~1.0.0 + leidenalg~0.11.0 — Leiden clustering &
+Traag et al., 2019 \citep{traag2019} &
+PyPI: \texttt{igraph}, \texttt{leidenalg};
+DOI: 10.1038/s41598-019-41695-z \\[4pt]
+
+pandas~2.3.3, NumPy~2.4.5 — data manipulation &
+McKinney, 2010; Harris et al., 2020 &
+PyPI: \texttt{pandas}, \texttt{numpy} \\[4pt]
+
+matplotlib~3.10.9, seaborn~0.13.2 — visualisation &
+Hunter, 2007; Waskom, 2021 &
+PyPI: \texttt{matplotlib}, \texttt{seaborn} \\[4pt]
+
+Analysis pipeline (this work) &
+This paper &
+\url{https://github.com/Klas96/spatial-breast-cancer} \\[4pt]
+
+%% ── Other ───────────────────────────────────────────────────────
+\multicolumn{3}{l}{\textit{\textbf{Other}}} \\[2pt]
+
+NVIDIA GeForce RTX~4070 GPU (12~GB GDDR6X) &
+NVIDIA Corporation &
+CUDA~13.2; Driver~595 \\[4pt]
+
+Server: Ubuntu 22.04 LTS, 64~GB RAM,
+AMD Ryzen~9 CPU &
+N/A &
+N/A \\[4pt]
+
+\end{longtable}
+\endgroup
+
+% ---------------------------------------------------------------
 \section{Methods}
 
 The analysis pipeline consists of six sequential stages implemented in Python using Scanpy \citep{wolf2018} and Squidpy \citep{palla2022}. All code is available at \url{https://github.com/Klas96/spatial-breast-cancer}.
