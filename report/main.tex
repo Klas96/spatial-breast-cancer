@@ -21,8 +21,39 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{tcolorbox}
-\tcbuselibrary{skins}
+\tcbuselibrary{skins,breakable}
 \definecolor{highlightbg}{RGB}{240,246,255}
+\usepackage{listings}
+\lstset{
+    language=bash,
+    basicstyle=\small\ttfamily,
+    backgroundcolor=\color{gray!7},
+    frame=single, framerule=0.4pt, rulecolor=\color{gray!35},
+    breaklines=true, breakatwhitespace=true,
+    showstringspaces=false, tabsize=4,
+    xleftmargin=4pt, xrightmargin=4pt,
+    aboveskip=5pt, belowskip=3pt,
+}
+\lstdefinestyle{python}{
+    language=Python,
+    keywordstyle=\color{blue!65!black}\bfseries,
+    commentstyle=\color{green!45!black}\itshape,
+    stringstyle=\color{orange!75!black},
+}
+% STAR Protocols annotation commands
+\newcommand{\critical}[1]{\par\smallskip\noindent%
+    {\color{red!65!black}\bfseries CRITICAL:}\ #1\par\smallskip}
+\newcommand{\notepar}[1]{\par\smallskip\noindent%
+    {\bfseries NOTE:}\ #1\par\smallskip}
+\newcommand{\pausept}[1]{\par\smallskip\noindent%
+    {\bfseries PAUSE POINT:}\ #1\par\smallskip}
+\newcommand{\timing}[1]{%
+    \begin{tcolorbox}[colback=orange!7,colframe=orange!55!black,
+        fonttitle=\bfseries\small,title=Timing,
+        boxrule=0.5pt,left=4pt,right=4pt,top=2pt,bottom=2pt,
+        before upper=\small]
+    #1
+    \end{tcolorbox}\vspace{2pt}}
 
 \hypersetup{
     colorlinks=true,
@@ -152,6 +183,361 @@ To quantify cell-type co-localisation, each spot was assigned its dominant cell 
 where $\hat{A} = \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}$ is the symmetrically normalised adjacency matrix with self-loops, and $\mathbf{W}^{(0)}, \mathbf{W}^{(1)} \in \mathbb{R}^{50 \times 64}$, $\mathbf{W}^{(\text{out})} \in \mathbb{R}^{64 \times C}$ are learnable weight matrices ($C$ = number of cell-type classes). Dropout ($p = 0.3$) was applied after each graph convolution layer.
 
 \paragraph{Training.} Spots were randomly split into training (68\%), validation (12\%), and test (20\%) sets. The model was trained for 300 epochs using the Adam optimiser ($\text{lr} = 10^{-3}$, weight decay $= 5 \times 10^{-4}$) minimising cross-entropy loss. Performance was evaluated on the held-out test set using per-class precision, recall, and F1-score.
+
+% ---------------------------------------------------------------
+\section{Step-by-Step Method Details}
+
+All steps assume the repository has been cloned and the virtual
+environment is active (see Before You Begin below).  Steps are
+numbered sequentially; sub-steps are lettered.  The entire pipeline
+can also be executed with a single command:
+\begin{lstlisting}
+./scripts/run_pipeline.sh data/visium results
+\end{lstlisting}
+
+% -------------------------------------------------------------------
+\subsection*{Before You Begin}
+
+\timing{30~min (one-time setup)}
+
+\begin{enumerate}
+
+\item \textbf{Clone the repository and enter the project directory.}
+\begin{lstlisting}
+git clone https://github.com/Klas96/spatial-breast-cancer.git
+cd spatial-breast-cancer
+\end{lstlisting}
+
+\item \textbf{Install \texttt{uv} (if not already installed).}
+\begin{lstlisting}
+curl -Lsf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env          # add uv to PATH
+\end{lstlisting}
+
+\item \textbf{Create the virtual environment and install all dependencies.}
+\begin{lstlisting}
+uv sync
+\end{lstlisting}
+This resolves and installs all packages listed in \texttt{pyproject.toml},
+including Scanpy, Squidpy, Cell2location, and PyTorch Geometric.
+\critical{The project requires Python~$\geq$3.11. Cell2location requires
+PyTorch with CUDA support for the GPU-accelerated training steps.
+Verify GPU availability with \texttt{nvidia-smi} before proceeding.}
+
+\item \textbf{Download the Visium dataset.}
+The 10x Genomics FFPE Human Breast Cancer Visium dataset is freely
+available.  Download and place the SpaceRanger output under
+\texttt{data/visium/}:
+\begin{lstlisting}
+mkdir -p data/visium/spatial
+BASE="https://cf.10xgenomics.com/samples/spatial-exp/1.3.0/\
+Visium_FFPE_Human_Breast_Cancer/Visium_FFPE_Human_Breast_Cancer"
+wget -O data/visium/filtered_feature_bc_matrix.h5 \
+    "${BASE}_filtered_feature_bc_matrix.h5"
+wget -O data/visium/spatial.tar.gz "${BASE}_spatial.tar.gz"
+tar -xzf data/visium/spatial.tar.gz -C data/visium/
+\end{lstlisting}
+The \texttt{spatial/} subdirectory must contain
+\texttt{scalefactors\_json.json}, \texttt{tissue\_positions.csv}
+(or \texttt{tissue\_positions\_list.csv}), and
+\texttt{tissue\_hires\_image.png}.
+
+\item \textbf{Download the Wu et al. 2021 scRNA-seq atlas.}
+The atlas is available on CellXGene; download it as an H5AD file
+and save it to \texttt{data/wu2021\_scrna\_atlas.h5ad}.
+The file must contain \texttt{adata.raw} (raw counts) and
+\texttt{adata.obs["celltype\_major"]}.
+\notepar{The atlas is $\sim$3.5~GB.  Ensure at least 16~GB of free
+disk space before downloading.}
+
+\item \textbf{Verify the directory structure.}
+\begin{lstlisting}
+ls data/visium/           # filtered_feature_bc_matrix.h5, spatial/
+ls data/                  # wu2021_scrna_atlas.h5ad
+\end{lstlisting}
+\pausept{The environment and data can be kept indefinitely.
+Return here before running any analysis stage.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 1 — Quality Control and Preprocessing}
+
+\timing{$\sim$5~min}
+
+\begin{enumerate}
+
+\item \textbf{Run the QC and preprocessing script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/01_qc_preprocessing.py
+\end{lstlisting}
+
+\item \textbf{What the script does (in order):}
+\begin{enumerate}
+    \item Loads SpaceRanger output via \texttt{sc.read\_visium}.
+    \item Computes QC metrics: total UMI counts, genes detected per spot,
+          and fraction of reads mapping to mitochondrial genes
+          (\texttt{MT-} prefix).
+    \item Saves \texttt{results/01\_qc\_distributions.png} — three
+          histograms with filter thresholds overlaid.
+    \item Removes spots with total counts~$<1{,}000$, detected
+          genes~$<500$, or mitochondrial fraction~$>20\%$.
+    \item Normalises to $10{,}000$ counts per spot, applies
+          \texttt{log1p}, selects the top 3,000 highly variable genes
+          (HVGs, \texttt{seurat\_v3} flavour), z-scores, and runs
+          PCA retaining 50 components.
+    \item Writes \texttt{results/01\_qc\_preprocessed.h5ad}.
+\end{enumerate}
+
+\item \textbf{Expected output.}
+The console should print the number of spots retained, e.g.:
+\begin{lstlisting}
+Spots after QC filtering: 2509
+Saved: results/01_qc_preprocessed.h5ad
+\end{lstlisting}
+\critical{If fewer than 500 spots remain after filtering, the QC
+thresholds may be too strict for the tissue.  Adjust
+\texttt{total\_counts > 1000} or \texttt{pct\_counts\_mt < 20}
+inside \texttt{run\_qc()} before continuing.}
+
+\item \textbf{Inspect the QC plot.}
+Open \texttt{results/01\_qc\_distributions.png} and verify that the
+dashed threshold lines split the distributions sensibly.
+
+\pausept{The \texttt{.h5ad} output can be saved and reloaded at any
+later point.  All subsequent stages read from disk, so stages can be
+re-run independently.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 2 — Clustering and Dimensionality Reduction}
+
+\timing{$\sim$5~min}
+
+\begin{enumerate}
+
+\item \textbf{Run the clustering script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/02_clustering.py
+\end{lstlisting}
+
+\item \textbf{What the script does:}
+\begin{enumerate}
+    \item Constructs a $k$-nearest neighbour graph in PCA space
+          ($k=15$, 30 PCs).
+    \item Builds a spatial neighbour graph from Visium spot
+          coordinates (\texttt{coord\_type="grid"}).
+    \item Computes a UMAP embedding.
+    \item Runs Leiden community detection at resolution~0.5 using the
+          igraph backend (\texttt{flavor="igraph",
+          directed=False}).
+    \item Saves \texttt{results/02\_clusters.png} (UMAP + spatial
+          scatter) and \texttt{results/02\_clustered.h5ad}.
+\end{enumerate}
+
+\item \textbf{Adjust clustering resolution if needed.}
+Open \texttt{src/02\_clustering.py} and change the \texttt{resolution}
+argument in \texttt{cluster()}:
+\begin{lstlisting}[style=python]
+# Finer clusters: increase resolution; coarser: decrease
+sc.tl.leiden(adata, resolution=0.5, ...)  # default
+\end{lstlisting}
+\notepar{Resolution~0.5 yields 6--10 clusters for typical Visium
+breast cancer sections.  Higher values produce more clusters.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 3 — Cell-Type Deconvolution with Cell2location}
+
+\timing{2--3~h (GPU); 10--15~h (CPU — not recommended)}
+
+\begin{enumerate}
+
+\item \textbf{Run the deconvolution script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/03_deconvolution.py
+\end{lstlisting}
+
+\item \textbf{What the script does:}
+\begin{enumerate}
+    \item Reloads raw integer Visium counts from \texttt{data/visium/}
+          and subsets to the QC-filtered spots from Stage~1.
+    \item Loads the Wu et al.\ atlas, extracts raw counts from
+          \texttt{adata.raw}, and maps Ensembl gene IDs to symbols via
+          \texttt{adata.raw.var["feature\_name"]}.
+    \item Trains the Cell2location \texttt{RegressionModel} on the
+          atlas for 200 epochs to estimate cell-type signatures
+          ($\hat{\mu}_{fg}$).
+    \item Restricts to genes present in both datasets.
+    \item Trains the \texttt{Cell2location} spatial model for
+          10,000~epochs ($N_{\text{cells}} = 8$,
+          $\alpha_{\text{detection}} = 20$).
+    \item Exports posterior mean abundances to
+          \texttt{adata.obsm["means\_cell\_abundance\_w\_sf"]}.
+    \item Saves \texttt{results/03\_cell\_type\_maps.png} and
+          \texttt{results/03\_deconvolved.h5ad}.
+\end{enumerate}
+
+\critical{Cell2location requires \emph{raw integer counts}.
+Do not pass log-normalised or scaled expression; the
+\texttt{GammaPoisson} likelihood will produce numerical overflow.
+The script reloads raw data from \texttt{data/visium/} for this
+reason.}
+
+\item \textbf{Monitor GPU usage (optional).}
+In a separate terminal:
+\begin{lstlisting}
+watch -n 5 nvidia-smi
+\end{lstlisting}
+GPU memory usage should be $<$4~GB for the spatial model.
+
+\item \textbf{Expected console output.}
+\begin{lstlisting}
+Shared genes: 15302
+Epoch 1/200 [RegressionModel] ...
+Epoch 1/10000 [Cell2location] ...
+Saved: results/03_cell_type_maps.png
+Saved: results/03_deconvolved.h5ad
+\end{lstlisting}
+
+\notepar{Shared gene count below 5,000 suggests a gene symbol
+mismatch between the Visium data and the atlas.  Verify that
+\texttt{adata.raw.var["feature\_name"]} contains HGNC symbols
+(e.g.\ \emph{TP53}), not Ensembl IDs (e.g.\ \emph{ENSG00000141510}).}
+
+\pausept{The \texttt{03\_deconvolved.h5ad} file ($\sim$200~MB)
+contains all downstream information.  Stages 4--6 can be
+re-run from this checkpoint without repeating deconvolution.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 4 — Spatially Variable Gene Detection}
+
+\timing{$\sim$10~min}
+
+\begin{enumerate}
+
+\item \textbf{Run the SVG detection script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/04_spatially_variable_genes.py
+\end{lstlisting}
+
+\item \textbf{What the script does:}
+\begin{enumerate}
+    \item Rebuilds the spatial neighbour graph.
+    \item Computes Moran's $I$ for all genes using
+          \texttt{sq.gr.spatial\_autocorr(mode="moran", n\_jobs=4)}.
+    \item Saves ranked results to \texttt{results/04\_svg\_results.csv}.
+    \item Plots the top 12 SVGs as spatial expression maps
+          (\texttt{results/04\_top\_svgs.png}).
+\end{enumerate}
+
+\item \textbf{Inspect the CSV to explore SVG rankings.}
+\begin{lstlisting}[style=python]
+import pandas as pd
+df = pd.read_csv("results/04_svg_results.csv")
+print(df.head(20))          # top 20 SVGs
+print(df[df["gene"] == "ERBB2"])   # check a gene of interest
+\end{lstlisting}
+
+\notepar{Genes with constant expression across spots (e.g.\ housekeeping
+genes) produce \texttt{NaN} Moran's~$I$ and are excluded from ranking.
+The console reports the number of such genes.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 5 — Neighbourhood Enrichment Analysis}
+
+\timing{$\sim$5~min}
+
+\begin{enumerate}
+
+\item \textbf{Run the neighbourhood enrichment script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/05_neighbourhood_enrichment.py
+\end{lstlisting}
+
+\item \textbf{What the script does:}
+\begin{enumerate}
+    \item Assigns each spot its \emph{dominant cell type}: the cell type
+          with the highest posterior mean abundance from Stage~3.
+    \item Runs \texttt{sq.gr.nhood\_enrichment} with 1,000 permutations
+          to compute co-localisation $z$-scores for every cell-type pair.
+    \item Saves a two-panel figure: enrichment heatmap + spatial scatter
+          (\texttt{results/05\_nhood\_enrichment.png}).
+    \item Writes \texttt{results/05\_nhood\_enrichment.h5ad} for use in
+          Stage~6.
+\end{enumerate}
+
+\item \textbf{Interpret the heatmap.}
+Positive $z$-scores (red) indicate cell-type pairs that co-localise more
+than expected by chance; negative values (blue) indicate mutual exclusion.
+Strong Cancer Epithelial~--~CAF co-localisation ($z > 2$) is
+characteristic of invasive ductal carcinoma.
+
+\critical{The dominant cell-type assignment is a simplification: spots
+contain mixtures of cell types.  For quantitative co-localisation,
+consider using continuous abundance values directly.}
+
+\end{enumerate}
+
+% -------------------------------------------------------------------
+\subsection{Stage 6 — GNN Tissue Domain Prediction}
+
+\timing{$\sim$10~min (GPU)}
+
+\begin{enumerate}
+
+\item \textbf{Run the GNN prediction script.}
+\begin{lstlisting}
+PYTHONPATH=src .venv/bin/python src/06_gnn_domain_prediction.py
+\end{lstlisting}
+
+\item \textbf{What the script does:}
+\begin{enumerate}
+    \item Normalises, log-transforms, and computes PCA (50 components)
+          on the raw counts.
+    \item Builds a PyTorch Geometric \texttt{Data} object: nodes are
+          spots (features = PCA embedding), edges from the spatial
+          neighbour graph.
+    \item Encodes dominant cell types as integer class labels.
+    \item Splits spots into train/val/test (68/12/20\%).
+    \item Trains a two-layer GCN for 300 epochs with Adam
+          ($\text{lr}=10^{-3}$, weight decay $5\times10^{-4}$,
+          dropout $p=0.3$).
+    \item Saves training curves (\texttt{06\_gnn\_training.png}),
+          a classification report (\texttt{06\_gnn\_metrics.txt}),
+          and a side-by-side spatial prediction figure
+          (\texttt{06\_gnn\_spatial\_pred.png}).
+\end{enumerate}
+
+\item \textbf{Read the classification report.}
+\begin{lstlisting}
+cat results/06_gnn_metrics.txt
+\end{lstlisting}
+Expected accuracy: 75--90\% depending on tissue composition.
+Cancer Epithelial spots (majority class) typically reach F1~$>$~0.88.
+
+\notepar{Rare cell types (Endothelial, Normal Epithelial) may show
+zero recall due to class imbalance.  Consider weighted sampling or
+oversampling these classes for more balanced evaluation.}
+
+\item \textbf{Run on the second dataset for cross-dataset validation.}
+\begin{lstlisting}
+./scripts/run_pipeline.sh data/visium2 results2
+\end{lstlisting}
+Compare \texttt{results/06\_gnn\_metrics.txt} with
+\texttt{results2/06\_gnn\_metrics.txt} to assess generalisability.
+
+\pausept{All six result files in \texttt{results/} and
+\texttt{results2/} represent the complete pipeline output.
+Figures can be incorporated directly into a manuscript.}
+
+\end{enumerate}
 
 % ---------------------------------------------------------------
 \section{Results}
